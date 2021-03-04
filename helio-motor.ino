@@ -7,8 +7,11 @@
 const char* ssid = "";
 const char* password = "";
 
-// blindLength measured in encoder rotations
 // stopCalibrate = False boolean variable
+int currentPosition = 0;
+int highest = 0;
+int lowest = 0;
+boolean stopCalibrationMovement = false;
 
 // server running on port 4310
 AsyncWebServer server(4310);
@@ -36,42 +39,80 @@ void getHello(AsyncWebServerRequest *request) {
   request->send(200, "application/json", "{\"message\":\"Welcome\"}");
 };
 
-void getStartCalibrate(AsyncWebServerRequest *request) {
-  // move blinds to top
-  // length = 0
-  // stopCalibrate = False
-  // while (not stopCalibrate) {
-  //   move motor down
-  //   increment length 
+void calibrationMoveUp(AsyncWebServerRequest *request) {
+   stopCalibrationMovement = false;
+  // while (not stopCalibrationMovement) {
+  //   move motor up
+  //   update currentPosition
   // }
-  // stopCalibrate = False
-  request->send(200, "application/json", "{\"message\":\"Welcome\"}");
+   stopCalibrationMovement = false;
+  request->send(200, "application/json", "{\"message\":\"Moving up\"}");
 };
 
-void getStopCalibrate(AsyncWebServerRequest *request) {
-  // stopCalibrate = True
-  // return new length
-  request->send(200, "application/json", "{\"length\":\"Welcome\"}");
+void calibrationMoveDown(AsyncWebServerRequest *request) {
+   stopCalibrationMovement = false;
+  // while (not stopCalibrationMovement) {
+  //   move motor up
+  //   update currentPosition
+  // }
+   stopCalibrationMovement = false;
+  request->send(200, "application/json", "{\"message\":\"Moving up\"}");
 };
 
-AsyncCallbackJsonWebHandler* postMotor = new AsyncCallbackJsonWebHandler("/rest/endpoint", [](AsyncWebServerRequest *request, JsonVariant &json) {
-  JsonObject jsonObj = json.as<JsonObject>(); // using ArduinoJson
-  // move the motor to specified level
-  // request->send(200, "application/json", "{\"level\":\"Welcome\"}");
-});
+void calibrationSetHighest(AsyncWebServerRequest *request) {
+  // return the current encoder step reading which represents 
+  // the highest point that the motor should reach
+  highest = currentPosition;
+  request->send(200, "application/json", "{\"highest\":\"highest\"}");
+};
+
+void calibrationSetLowest(AsyncWebServerRequest *request) {
+  // return the current encoder step reading which represents 
+  // the lowest point that the motor should reach
+  request->send(200, "application/json", "{\"message\":\"lowest\"}");
+};
+
+void calibrationStopMoving(AsyncWebServerRequest *request) {
+  stopCalibrationMovement = true;
+  request->send(200);
+};
+
+void moveMotor(AsyncWebServerRequest *request) {
+
+  if (request->hasParam("steps")) {
+    String steps = request->getParam("steps")->value();
+    
+    // call motor function that moves the given number of steps
+    // note steps may be a negative value, indicating the motor should move backwards
+ 
+    request->send(200, "application/json", "{\"position\":\"{motor encoder reading}\"}");
+  } else {
+    request->send(400, "application/json", "{\"msg\":\"Invalid request - must provide steps parameter!\"}");
+  }
+};
+
+//AsyncCallbackJsonWebHandler* postMotor = new AsyncCallbackJsonWebHandler("/rest/endpoint", [](AsyncWebServerRequest *request, JsonVariant &json) {
+//  JsonObject jsonObj = json.as<JsonObject>(); // using ArduinoJson
+//  // move the motor to specified level
+//  // request->send(200, "application/json", "{\"level\":\"Welcome\"}");
+//});
 
 void configureRouting() {
   server.onNotFound(notFound);
   server.on("/hello", HTTP_GET, getHello);
 
-  server.on("/start_calibrate", HTTP_GET, getStartCalibrate);
-  server.on("/start_calibrate", HTTP_GET, getStopCalibrate);
+  server.on("/calibration_move_up", HTTP_GET, calibrationMoveUp);
+  server.on("/calibration_move_down", HTTP_GET, calibrationMoveDown);
+  server.on("/calibration_stop_moving", HTTP_GET, calibrationStopMoving);
+  server.on("/calibration_set_highest", HTTP_GET, calibrationSetHighest);
+  server.on("/calibration_set_lowest", HTTP_GET, calibrationSetLowest);
+  server.on("/move", HTTP_GET, moveMotor);
 
-  server.addHandler(postMotor);
+//  server.addHandler(postMotor); // to handle a post request
 }
 
 void setup() {
-  Serial.begin(921600);
+  Serial.begin(9600); // note this may need changing...'upload speed' should be 921600 https://learn.adafruit.com/adafruit-huzzah32-esp32-feather/using-with-arduino-ide
   connectToWifi();
   configureRouting();
   server.begin();
