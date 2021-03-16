@@ -54,7 +54,7 @@ void calibrationSetHighest(AsyncWebServerRequest *request) {
   
   String highestString = String(currentPosition);
 
-  request->send(200, "application/json", "{\"message\":" + highestString + "}");
+  request->send(200, "application/json", "{\"highest\":" + highestString + "}");
 };
 
 void calibrationSetLowest(AsyncWebServerRequest *request) {
@@ -64,12 +64,12 @@ void calibrationSetLowest(AsyncWebServerRequest *request) {
 //  stopCalibrationMovement = true; not needed because expect stop moving request first?
   // delay here?
   String lowestString = String(currentPosition);
-  request->send(200, "application/json", "{\"message\":" + lowestString + "}");
+  request->send(200, "application/json", "{\"lowest\":" + lowestString + "}");
 };
 
 void calibrationStopMoving(AsyncWebServerRequest *request) {
   stopCalibrationMovement = true;
-  request->send(200, "application/json", "{\"msg\":\"OK\"}");
+  request->send(200, "application/json", "{\"msg\":\"calibration stop moving\"}");
 };
 
 void moveMotor(AsyncWebServerRequest *request) {
@@ -77,11 +77,12 @@ void moveMotor(AsyncWebServerRequest *request) {
   if (request->hasParam("steps")) {
     String stepsString = request->getParam("steps")->value();
     int steps = stepsString.toInt();
-    
+    String newStepsString = String(steps + 1);
+    Serial.println(newStepsString);
 //    if(currentPosition < steps) {
 //    moveUp(speed,steps);
-    Serial.println("move :" + stepsString + " steps");
-    request->send(200, "application/json", "{\"position\":" + stepsString + "}");
+    Serial.println("move :" + newStepsString + " steps");
+    request->send(200, "application/json", "{\"position\":" + newStepsString + "}");
   } else {
     request->send(400, "application/json", "{\"msg\":\"Invalid request - must provide steps parameter!\"}");
   }
@@ -100,7 +101,8 @@ void configureRouting() {
 
 }
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600); // note this may need changing...'upload speed' should be 921600 https://learn.adafruit.com/adafruit-huzzah32-esp32-feather/using-with-arduino-ide
+  connectToWifi();
   configureRouting();
   Serial.println("Routing configured");
   server.begin();
@@ -108,6 +110,8 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(WiFi.localIP());
+  Serial.println("in loop");
   delay(10000);
+  // put your main code here, to run repeatedly:
+
 }
