@@ -9,7 +9,7 @@
 #define ROTARY_SLAVE_ADDRESS 5 // address of encoder board
 #define ROTARY_COUNT 6 // how many motors' encoder values needs to be read
 #define PRINT_DELAY 200
-#define PIR_MOTION_SENSOR 2 //Use pin 2 to receive the signal from motion sensor
+#define PIR_MOTION_SENSOR 32 //Use pin 2 to receive the signal from motion sensor
 
 // variables for motor calibration and control
 int currentPosition = 0;
@@ -17,9 +17,21 @@ boolean stopCalibrationMovement = false;
 
 const char* ssid = "SDProbots";
 const char* password = "robotsRus";
-
+IPAddress ip;
+SI114X SI1145 = SI114X();
 // server running on port 4310
 AsyncWebServer server(4310);
+
+
+void setupSun(){
+  Serial.println("Beginning Si1145!");
+
+    while (!SI1145.Begin()) {
+        Serial.println("Si1145 is not ready!");
+        delay(1000);
+    }
+    Serial.println("Si1145 is ready!");
+  }
 
 void connectToWifi() {
   Serial.print("Connecting to ");
@@ -34,6 +46,7 @@ void connectToWifi() {
  
   Serial.print("Connected. IP: ");
   Serial.println(WiFi.localIP());
+  ip = WiFi.localIP();
   delay(1000);
 }
 
@@ -88,6 +101,29 @@ void moveMotor(AsyncWebServerRequest *request) {
   }
 }
 
+void get_motion(AsyncWebServerRequest *request){
+    boolean pirval = digitalRead(PIR_MOTION_SENSOR);
+    request->send(200, "application/json", "{\"motion\":" +  String(pirval) + "}");
+    delay(200);
+}
+
+void get_sun(AsyncWebServerRequest *request){
+    Serial.print("Vis: "); 
+    float vs=SI1145.ReadVisible();
+    Serial.println(vs);
+    Serial.print("IR: "); 
+    float ir = SI1145.ReadIR();
+    Serial.println(ir);
+    //the real UV value must be div 100 from the reg value , datasheet for more information.
+    Serial.print("UV: ");  
+    float uv = (float)SI1145.ReadUV() / 100;
+    Serial.println(uv);
+    request->send(200, "application/json", "{\"uv\":" +  String(uv) + ",ir:"+ String(ir)+",visible:"+ String(vs)+"}");
+    delay(1000);
+}
+void pinSetup(){
+  pinMode(PIR_MOTION_SENSOR, INPUT);  
+}
 void configureRouting() {
   server.onNotFound(notFound);
   server.on("/hello", HTTP_GET, getHello);
@@ -98,10 +134,14 @@ void configureRouting() {
   server.on("/calibration_set_highest", HTTP_GET, calibrationSetHighest);
   server.on("/calibration_set_lowest", HTTP_GET, calibrationSetLowest);
   server.on("/move", HTTP_GET, moveMotor);
+  server.on("/get_motion", HTTP_GET, get_motion);
+  server.on("/get_sun", HTTP_GET, get_sun);
 
 }
 void setup() {
-  Serial.begin(9600); // note this may need changing...'upload speed' should be 921600 https://learn.adafruit.com/adafruit-huzzah32-esp32-feather/using-with-arduino-ide
+  Serial.begin(115200);
+  pinSetup();
+  setupSun();
   connectToWifi();
   configureRouting();
   Serial.println("Routing configured");
@@ -110,7 +150,7 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("in loop");
+  Serial.println(ip);
   delay(10000);
   // put your main code here, to run repeatedly:
 
